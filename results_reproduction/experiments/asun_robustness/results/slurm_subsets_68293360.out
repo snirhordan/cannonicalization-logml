@@ -1,0 +1,310 @@
+host=nlp-h200-1 cores=64 start=Thu Jul 16 02:17:08 AM IDT 2026
+========== RANDOM SUBSET seed=1 ==========
+SUBSET=rand5000_s1  extracting 5000 molecules (perturbation seed tied to original QM9 index)...
+processing 5000 molecules x 100 perturb on 64 cores...
+  500/5000  (12s)
+  1000/5000  (20s)
+  1500/5000  (29s)
+  2000/5000  (37s)
+  2500/5000  (45s)
+  3000/5000  (54s)
+  3500/5000  (63s)
+  4000/5000  (72s)
+  4500/5000  (82s)
+  5000/5000  (90s)
+
+===== TABLE 1 (by rank) — mean EMD =====
+method            rank1      rank2      rank3
+asun                n/a        n/a    0.03891
+pca_centered        n/a        n/a    0.88975
+pca_svd             n/a        n/a    2.35360
+pca_noop            n/a        n/a    2.73323
+ours                n/a        n/a    0.00000
+
+===== TABLE 1 (by rank) — median EMD =====
+method            rank1      rank2      rank3
+asun                n/a        n/a    0.00000
+pca_centered        n/a        n/a    1.00365
+pca_svd             n/a        n/a    1.72562
+pca_noop            n/a        n/a    2.43826
+ours                n/a        n/a    0.00000
+
+Paper Table 1 (mean): PCA 0.00014/0.01793/0.82758 | AE 1.15122/0.03754/0.03178 | ASUN 0.00014/0.00008/0.02826
+
+===== TABLE 2 (by point group) — mean EMD =====
+pg        n_mol         asun pca_centered      pca_svd     pca_noop         ours
+C1         4274      0.01826      0.91645      2.35409      2.70708      0.00000
+Cs          682      0.16248      0.74150      2.33893      2.87543      0.00000
+C2           18      0.16702      0.66579      2.51000      2.91926      0.00000
+C2v          16      0.04183      0.57848      2.64718      3.29060      0.00000
+C2h           3      0.22051      0.32499      2.35965      2.89922      0.00000
+D3h           2      0.12056      0.42498      1.84597      2.16317      0.00000
+Ci            2      0.57320      0.73303      2.60171      2.95235      0.00000
+Cinfv         1      0.00000      0.72306      1.96056      3.49824      0.00000
+Dinfh         1      0.00074      0.00018      2.23161      3.19875      0.00000
+C3v           1      0.00000      0.88299      3.79159      4.23011      0.00000
+
+===== TABLE 2 (by point group) — median EMD =====
+pg        n_mol         asun pca_centered      pca_svd     pca_noop         ours
+C1         4274      0.00000      1.02005      1.74037      2.42445      0.00000
+Cs          682      0.00000      0.86396      1.63592      2.51995      0.00000
+C2           18      0.00010      0.83165      1.63707      2.58155      0.00000
+C2v          16      0.00005      0.00673      1.54149      3.14851      0.00000
+C2h           3      0.00017      0.00024      1.67237      2.14244      0.00000
+D3h           2      0.00029      0.60715      1.43861      2.10768      0.00000
+Ci            2      0.34878      1.00621      2.36489      2.74560      0.00000
+Cinfv         1      0.00000      0.79858      1.29273      3.72061      0.00000
+Dinfh         1      0.00085      0.00030      3.05055      3.55622      0.00000
+C3v           1      0.00000      1.23294      5.60502      4.36787      0.00000
+
+Paper Table 2 (C1/Cinfv/Cs/D6h/Td) mean: PCA .853/.303/.679/.244/.721 | AE .041/.240/.037/.023/.028 | ASUN .018/.001/.004/.001/.001
+
+crashes: {'asun': 0, 'pca_centered': 0, 'pca_svd': 0, 'pca_noop': 0, 'ours': 0}
+total time 90s for N=5000, nperturb=100, cores=64
+SUMMARY subset=rand5000_s1 n_rank3_mol=5000 ASUN_rank3_mean=0.03891 ASUN_rank3_median=0.000000 ours_rank3_mean=8.76e-09 pca_rank3_mean=0.88975
+wrote results/reproduce_rand5k_s1.csv
+========== RANDOM SUBSET seed=2 ==========
+SUBSET=rand5000_s2  extracting 5000 molecules (perturbation seed tied to original QM9 index)...
+processing 5000 molecules x 100 perturb on 64 cores...
+  500/5000  (12s)
+  1000/5000  (20s)
+  1500/5000  (29s)
+  2000/5000  (37s)
+  2500/5000  (45s)
+  3000/5000  (54s)
+  3500/5000  (63s)
+  4000/5000  (72s)
+  4500/5000  (81s)
+  5000/5000  (89s)
+
+===== TABLE 1 (by rank) — mean EMD =====
+method            rank1      rank2      rank3
+asun                n/a        n/a    0.04024
+pca_centered        n/a        n/a    0.88767
+pca_svd             n/a        n/a    2.34484
+pca_noop            n/a        n/a    2.72815
+ours                n/a        n/a    0.00000
+
+===== TABLE 1 (by rank) — median EMD =====
+method            rank1      rank2      rank3
+asun                n/a        n/a    0.00000
+pca_centered        n/a        n/a    1.00083
+pca_svd             n/a        n/a    1.71904
+pca_noop            n/a        n/a    2.44056
+ours                n/a        n/a    0.00000
+
+Paper Table 1 (mean): PCA 0.00014/0.01793/0.82758 | AE 1.15122/0.03754/0.03178 | ASUN 0.00014/0.00008/0.02826
+
+===== TABLE 2 (by point group) — mean EMD =====
+pg        n_mol         asun pca_centered      pca_svd     pca_noop         ours
+C1         4213      0.01934      0.91589      2.36590      2.72277      0.00000
+Cs          742      0.15294      0.74500      2.21733      2.74441      0.00000
+C2           25      0.12066      0.67567      2.53073      3.00672      0.00000
+C2v          14      0.04360      0.51040      2.36456      2.83551      0.00000
+C2h           3      0.53428      0.36798      1.84735      2.30722      0.00000
+Dinfh         1      0.24078      0.21505      3.41465      4.80266      0.00000
+D3h           1      0.74810      0.65072      2.48876      2.78250      0.00000
+C3v           1      0.00000      0.90062      3.58605      3.99018      0.00000
+
+===== TABLE 2 (by point group) — median EMD =====
+pg        n_mol         asun pca_centered      pca_svd     pca_noop         ours
+C1         4213      0.00000      1.01878      1.74063      2.43897      0.00000
+Cs          742      0.00000      0.89325      1.60177      2.44202      0.00000
+C2           25      0.00000      0.76200      1.67105      2.68695      0.00000
+C2v          14      0.00009      0.11910      1.73534      2.48135      0.00000
+C2h           3      0.00179      0.00177      1.65686      2.14043      0.00000
+Dinfh         1      0.42996      0.15569      5.42001      5.45289      0.00000
+D3h           1      0.87490      1.03105      1.62654      2.80927      0.00000
+C3v           1      0.00000      0.94629      5.40289      4.27843      0.00000
+
+Paper Table 2 (C1/Cinfv/Cs/D6h/Td) mean: PCA .853/.303/.679/.244/.721 | AE .041/.240/.037/.023/.028 | ASUN .018/.001/.004/.001/.001
+
+crashes: {'asun': 0, 'pca_centered': 0, 'pca_svd': 0, 'pca_noop': 0, 'ours': 0}
+total time 90s for N=5000, nperturb=100, cores=64
+SUMMARY subset=rand5000_s2 n_rank3_mol=5000 ASUN_rank3_mean=0.04024 ASUN_rank3_median=0.000000 ours_rank3_mean=8.79e-09 pca_rank3_mean=0.88767
+wrote results/reproduce_rand5k_s2.csv
+========== RANDOM SUBSET seed=3 ==========
+SUBSET=rand5000_s3  extracting 5000 molecules (perturbation seed tied to original QM9 index)...
+processing 5000 molecules x 100 perturb on 64 cores...
+  500/5000  (12s)
+  1000/5000  (20s)
+  1500/5000  (29s)
+  2000/5000  (37s)
+  2500/5000  (45s)
+  3000/5000  (54s)
+  3500/5000  (63s)
+  4000/5000  (72s)
+  4500/5000  (81s)
+  5000/5000  (89s)
+
+===== TABLE 1 (by rank) — mean EMD =====
+method            rank1      rank2      rank3
+asun                n/a        n/a    0.03890
+pca_centered        n/a        n/a    0.89088
+pca_svd             n/a        n/a    2.31690
+pca_noop            n/a        n/a    2.69679
+ours                n/a        n/a    0.00000
+
+===== TABLE 1 (by rank) — median EMD =====
+method            rank1      rank2      rank3
+asun                n/a        n/a    0.00000
+pca_centered        n/a        n/a    1.00401
+pca_svd             n/a        n/a    1.72478
+pca_noop            n/a        n/a    2.42168
+ours                n/a        n/a    0.00000
+
+Paper Table 1 (mean): PCA 0.00014/0.01793/0.82758 | AE 1.15122/0.03754/0.03178 | ASUN 0.00014/0.00008/0.02826
+
+===== TABLE 2 (by point group) — mean EMD =====
+pg        n_mol         asun pca_centered      pca_svd     pca_noop         ours
+C1         4268      0.01976      0.91596      2.31657      2.67103      0.00000
+Cs          690      0.14611      0.75147      2.30782      2.83760      0.00000
+C2           20      0.20274      0.69610      2.31046      2.67148      0.00000
+C2v          17      0.11525      0.49749      2.70358      3.37171      0.00000
+C3            2      0.95834      0.84490      2.67265      3.10537      0.00000
+D2d           1      0.11759      0.52009      1.33112      1.41498      0.00000
+C2h           1      1.32447      0.51647      2.06313      2.65256      0.00000
+C3v           1      0.00000      1.44098      4.09769      5.03422      0.00000
+
+===== TABLE 2 (by point group) — median EMD =====
+pg        n_mol         asun pca_centered      pca_svd     pca_noop         ours
+C1         4268      0.00000      1.01909      1.73818      2.41391      0.00000
+Cs          690      0.00000      0.89129      1.64152      2.46467      0.00000
+C2           20      0.00014      0.88116      1.72023      2.34539      0.00000
+C2v          17      0.00000      0.00177      1.91775      2.93882      0.00000
+C3            2      0.96891      0.88369      1.53397      2.43570      0.00000
+D2d           1      0.00042      0.19271      1.36003      1.41561      0.00000
+C2h           1      1.17130      0.00013      1.44454      2.75089      0.00000
+C3v           1      0.00000      2.40808      6.43793      5.59663      0.00000
+
+Paper Table 2 (C1/Cinfv/Cs/D6h/Td) mean: PCA .853/.303/.679/.244/.721 | AE .041/.240/.037/.023/.028 | ASUN .018/.001/.004/.001/.001
+
+crashes: {'asun': 0, 'pca_centered': 0, 'pca_svd': 0, 'pca_noop': 0, 'ours': 0}
+total time 90s for N=5000, nperturb=100, cores=64
+SUMMARY subset=rand5000_s3 n_rank3_mol=5000 ASUN_rank3_mean=0.03890 ASUN_rank3_median=0.000000 ours_rank3_mean=8.81e-09 pca_rank3_mean=0.89088
+wrote results/reproduce_rand5k_s3.csv
+========== RANDOM SUBSET seed=4 ==========
+SUBSET=rand5000_s4  extracting 5000 molecules (perturbation seed tied to original QM9 index)...
+processing 5000 molecules x 100 perturb on 64 cores...
+  500/5000  (13s)
+  1000/5000  (21s)
+  1500/5000  (29s)
+  2000/5000  (38s)
+  2500/5000  (46s)
+  3000/5000  (55s)
+  3500/5000  (64s)
+  4000/5000  (73s)
+  4500/5000  (83s)
+  5000/5000  (91s)
+
+===== TABLE 1 (by rank) — mean EMD =====
+method            rank1      rank2      rank3
+asun                n/a        n/a    0.03994
+pca_centered        n/a        n/a    0.88509
+pca_svd             n/a        n/a    2.34802
+pca_noop            n/a        n/a    2.73089
+ours                n/a        n/a    0.00000
+
+===== TABLE 1 (by rank) — median EMD =====
+method            rank1      rank2      rank3
+asun                n/a        n/a    0.00000
+pca_centered        n/a        n/a    0.99659
+pca_svd             n/a        n/a    1.73431
+pca_noop            n/a        n/a    2.44820
+ours                n/a        n/a    0.00000
+
+Paper Table 1 (mean): PCA 0.00014/0.01793/0.82758 | AE 1.15122/0.03754/0.03178 | ASUN 0.00014/0.00008/0.02826
+
+===== TABLE 2 (by point group) — mean EMD =====
+pg        n_mol         asun pca_centered      pca_svd     pca_noop         ours
+C1         4209      0.02066      0.91429      2.35924      2.71696      0.00000
+Cs          737      0.13979      0.73969      2.29366      2.82142      0.00000
+C2           26      0.20712      0.65948      2.23876      2.53768      0.00000
+C2v          21      0.09298      0.56962      2.31418      2.72864      0.00000
+C2h           3      0.51092      0.40036      2.09365      2.53668      0.00000
+C3v           2      0.24890      0.50396      1.63718      2.23973      0.00000
+Dinfh         1      0.00100      0.00042      1.52316      1.96984      0.00000
+D3h           1      0.34663      0.74339      1.77046      2.03706      0.00000
+
+===== TABLE 2 (by point group) — median EMD =====
+pg        n_mol         asun pca_centered      pca_svd     pca_noop         ours
+C1         4209      0.00000      1.01517      1.75090      2.44184      0.00000
+Cs          737      0.00000      0.87146      1.64572      2.49695      0.00000
+C2           26      0.00007      0.83798      1.66770      2.29113      0.00000
+C2v          21      0.00015      0.51028      1.59190      2.44860      0.00000
+C2h           3      0.00376      0.55932      1.72871      2.44705      0.00000
+C3v           2      0.00000      0.62139      1.16935      2.27974      0.00000
+Dinfh         1      0.00107      0.00006      1.53391      1.98896      0.00000
+D3h           1      0.00748      0.93008      1.38700      2.08008      0.00000
+
+Paper Table 2 (C1/Cinfv/Cs/D6h/Td) mean: PCA .853/.303/.679/.244/.721 | AE .041/.240/.037/.023/.028 | ASUN .018/.001/.004/.001/.001
+
+crashes: {'asun': 0, 'pca_centered': 0, 'pca_svd': 0, 'pca_noop': 0, 'ours': 0}
+total time 91s for N=5000, nperturb=100, cores=64
+SUMMARY subset=rand5000_s4 n_rank3_mol=5000 ASUN_rank3_mean=0.03994 ASUN_rank3_median=0.000000 ours_rank3_mean=8.80e-09 pca_rank3_mean=0.88509
+wrote results/reproduce_rand5k_s4.csv
+========== RANDOM SUBSET seed=5 ==========
+SUBSET=rand5000_s5  extracting 5000 molecules (perturbation seed tied to original QM9 index)...
+processing 5000 molecules x 100 perturb on 64 cores...
+  500/5000  (13s)
+  1000/5000  (21s)
+  1500/5000  (30s)
+  2000/5000  (38s)
+  2500/5000  (46s)
+  3000/5000  (55s)
+  3500/5000  (64s)
+  4000/5000  (73s)
+  4500/5000  (83s)
+  5000/5000  (90s)
+
+===== TABLE 1 (by rank) — mean EMD =====
+method            rank1      rank2      rank3
+asun                n/a        n/a    0.04279
+pca_centered        n/a        n/a    0.89026
+pca_svd             n/a        n/a    2.34743
+pca_noop            n/a        n/a    2.72603
+ours                n/a        n/a    0.00000
+
+===== TABLE 1 (by rank) — median EMD =====
+method            rank1      rank2      rank3
+asun                n/a        n/a    0.00000
+pca_centered        n/a        n/a    1.00201
+pca_svd             n/a        n/a    1.72541
+pca_noop            n/a        n/a    2.44560
+ours                n/a        n/a    0.00000
+
+Paper Table 1 (mean): PCA 0.00014/0.01793/0.82758 | AE 1.15122/0.03754/0.03178 | ASUN 0.00014/0.00008/0.02826
+
+===== TABLE 2 (by point group) — mean EMD =====
+pg        n_mol         asun pca_centered      pca_svd     pca_noop         ours
+C1         4247      0.01884      0.91747      2.36367      2.71980      0.00000
+Cs          698      0.17318      0.74849      2.24569      2.75536      0.00000
+C2           25      0.24923      0.66468      2.57406      3.00094      0.00000
+C2v          23      0.15134      0.54213      2.15454      2.65685      0.00000
+C2h           2      0.56422      0.36550      2.50374      2.94181      0.00000
+C3v           1      0.49615      0.80172      2.40463      2.52658      0.00000
+Ci            1      0.65483      0.61983      3.86451      4.29860      0.00000
+D2d           1      0.86139      0.70801      2.60230      2.80284      0.00000
+D2h           1      0.00015      0.00009      1.66457      1.90767      0.00000
+C3h           1      0.17001      0.40990      1.71902      2.34025      0.00000
+
+===== TABLE 2 (by point group) — median EMD =====
+pg        n_mol         asun pca_centered      pca_svd     pca_noop         ours
+C1         4247      0.00000      1.01974      1.74490      2.44775      0.00000
+Cs          698      0.00000      0.88547      1.61283      2.42724      0.00000
+C2           25      0.00011      0.78705      1.80389      2.72806      0.00000
+C2v          23      0.00000      0.50985      1.57318      2.26766      0.00000
+C2h           2      0.00147      0.00124      1.99525      2.83772      0.00000
+C3v           1      0.90160      0.95497      3.15673      2.52259      0.00000
+Ci            1      0.88976      0.82471      5.72374      4.61956      0.00000
+D2d           1      1.01039      1.21442      3.43469      2.74578      0.00000
+D2h           1      0.00008      0.00009      1.53688      1.88346      0.00000
+C3h           1      0.00022      0.45839      1.11503      2.35305      0.00000
+
+Paper Table 2 (C1/Cinfv/Cs/D6h/Td) mean: PCA .853/.303/.679/.244/.721 | AE .041/.240/.037/.023/.028 | ASUN .018/.001/.004/.001/.001
+
+crashes: {'asun': 0, 'pca_centered': 0, 'pca_svd': 0, 'pca_noop': 0, 'ours': 0}
+total time 91s for N=5000, nperturb=100, cores=64
+SUMMARY subset=rand5000_s5 n_rank3_mol=5000 ASUN_rank3_mean=0.04279 ASUN_rank3_median=0.000000 ours_rank3_mean=8.80e-09 pca_rank3_mean=0.89026
+wrote results/reproduce_rand5k_s5.csv
+ALL SUBSETS DONE Thu Jul 16 02:25:12 AM IDT 2026

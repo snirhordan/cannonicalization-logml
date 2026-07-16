@@ -1,0 +1,56 @@
+host=bruno2 cores=64 start=Thu Jul 16 11:44:06 AM IDT 2026
+canonicalize_pca_full (DEFAULT_GAP_RTOL=0.02) over 130831 QM9 molecules, 10 perturbations each; rank-slice = first 10000, point-group-slice = full 130831...
+  10000/130831  (5s)
+  20000/130831  (8s)
+  30000/130831  (10s)
+  40000/130831  (13s)
+  50000/130831  (15s)
+  60000/130831  (18s)
+  70000/130831  (21s)
+  80000/130831  (24s)
+  90000/130831  (26s)
+  100000/130831  (29s)
+  110000/130831  (32s)
+  120000/130831  (34s)
+  130000/130831  (37s)
+
+===== per-RANK mean EMD (qm9[:10000], nperturb=10) =====
+  rank1: n_obs=20 mean=3.430672e-09 median=1.241763e-09
+  rank2: n_obs=20 mean=3.755783e-09 median=2.980232e-09
+  rank3: n_obs=99960 mean=8.422456e-09 median=8.188328e-09
+
+===== per-POINT-GROUP mean EMD (full QM9 N=130831, nperturb=10) =====
+  C1       n_mol=111902 n_obs=1119020 mean=8.801254e-09 median=8.607880e-09
+  Cs       n_mol= 17808 n_obs=178080 mean=8.823743e-09 median=8.539552e-09
+  C2       n_mol=   470 n_obs=4700 mean=8.506443e-09 median=8.319157e-09
+  C2v      n_mol=   442 n_obs=4420 mean=8.416380e-09 median=8.222113e-09
+  C3v      n_mol=    65 n_obs=650 mean=8.167506e-09 median=8.118961e-09
+  C2h      n_mol=    49 n_obs=490 mean=8.697749e-09 median=8.094786e-09
+  D3h      n_mol=    16 n_obs=160 mean=7.961811e-09 median=8.285338e-09
+  Ci       n_mol=    15 n_obs=150 mean=9.533522e-09 median=9.652499e-09
+  C3       n_mol=    11 n_obs=110 mean=8.014495e-09 median=7.252746e-09
+  D2d      n_mol=    11 n_obs=110 mean=7.099110e-09 median=6.959580e-09
+  Dinfh    n_mol=     8 n_obs=80 mean=7.499017e-09 median=7.267964e-09
+  Cinfv    n_mol=     8 n_obs=80 mean=9.735410e-09 median=1.024471e-08
+  D2h      n_mol=     6 n_obs=60 mean=5.669105e-09 median=5.587935e-09
+  Td       n_mol=     5 n_obs=50 mean=6.857170e-09 median=6.560792e-09
+  D3d      n_mol=     4 n_obs=40 mean=8.981560e-09 median=9.079372e-09
+  C3h      n_mol=     4 n_obs=40 mean=1.206369e-08 median=1.195525e-08
+  D3       n_mol=     2 n_obs=20 mean=9.207875e-09 median=8.737578e-09
+  D6h      n_mol=     1 n_obs=10 mean=5.524020e-09 median=5.224231e-09
+  C4       n_mol=     1 n_obs=10 mean=8.735712e-09 median=8.302008e-09
+  D2       n_mol=     1 n_obs=10 mean=5.877828e-09 median=5.155368e-09
+  S4       n_mol=     1 n_obs=10 mean=7.178748e-09 median=7.491451e-09
+  Oh       n_mol=     1 n_obs=10 mean=5.110172e-09 median=5.155368e-09
+
+===== dispatch regime counts (base pose, 130831 molecules) =====
+  R0        0
+  DISTINCT  128760
+  AXIAL     2063
+  TRIPLE    8
+
+===== boundary molecules (regime mismatch across a perturbation, or max EMD > 1e-6 across its 10 perturbations): 0 / 130831 =====
+
+total time 223s for N=130831, nperturb=10, cores=64
+wrote results/pca_full_dispatch.csv
+end=Thu Jul 16 11:48:30 AM IDT 2026

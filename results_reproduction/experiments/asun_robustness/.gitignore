@@ -1,0 +1,11 @@
+# Opportunistic QM-sym raw download (~375MB) -- re-downloadable by
+# data_prep.py/run_sweep.py, not meant to live in the repo.
+data/
+
+# Full-run outputs (large; produced by the orchestrator's sbatch job).
+results/full.csv
+results/full_raw_per_molecule.csv
+results/molecules_full.npz
+
+__pycache__/
+*.pyc

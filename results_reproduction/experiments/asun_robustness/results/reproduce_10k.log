@@ -1,0 +1,4 @@
+/home/snirhordan/linkedin/docs/logml/experiments/asun_robustness/vendor/pyorbit/utils/geometry.py:39: RuntimeWarning: invalid value encountered in arccos
+  return np.arccos(np.dot(v0, v1)/(np.linalg.norm(v0)*np.linalg.norm(v1)))
+  200/10000  (21s)
+  400/10000  (37s)

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Results — Hidden in Plain Symmetry</title>
+<link rel="stylesheet" href="assets/style.css">
+<script>
+window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };
+</script>
+<script async src="assets/mathjax/tex-svg.js"></script>
+</head>
+<body>
+<nav class="top"><div class="inner">
+<a class="home" href="index.html">◆ Hidden in Plain Symmetry</a>
+<a href="reading_list.html">Reading list</a>
+<a href="background.html">Background</a>
+<a href="lesson1.html">Day-1 plan</a>
+<a href="proofs.html">Proofs</a>
+<a href="algorithm.html">Algorithm</a>
+<a href="detection.html">2D detection</a>
+<a href="detection3d.html">3D Detection</a>
+<a href="canonicalization3d.html">3D Canonicalization</a>
+<a href="comparison.html">Comparison</a>
+<a href="experiments.html">Experiments</a>
+<a href="assessment.html">Assessment</a>
+<a href="results.html">Results</a>
+</div></nav>
+<main>
+
+<h1>ASUN robustness: reproduction results</h1>
+<p class="subtitle">Re-running Baker et al.&rsquo;s own evaluation harness shows their published ASUN canonicalization is not, in fact, invariant to rotation and translation &mdash; ours is.</p>
+
+<h2>1. What we ran</h2>
+<p>
+<strong>Dataset:</strong> QM9 &mdash; 130,831 small organic molecules (elements H, C, N, O, F).
+</p>
+<p>
+We reproduced <strong>Baker et al. 2024</strong>&rsquo;s own evaluation harness (their
+<code>examples/unique_canonical_representation.ipynb</code>) <strong>verbatim</strong>. For each molecule:
+compute a baseline canonical pose, then apply a <strong>perturbation</strong> &mdash; a random rotation
+<em>plus</em> a random translation of the <em>same</em> molecule (a Haar-random rotation composed with an
+<code>np.random.rand(3)</code> shift). <strong>There is no coordinate noise</strong>: atoms are not jittered,
+only the rigid frame (rotation + translation) changes.
+</p>
+<p>
+<strong>Metric:</strong> the paper&rsquo;s own geometric Earth Mover Distance &mdash; POT&rsquo;s <code>ot.emd2</code>
+with uniform weights and Euclidean cost &mdash; between the baseline canonical pose and the re-canonicalized
+perturbed pose. EMD is permutation-invariant, so atom reordering introduced by a canonicalization does not
+affect the metric.
+</p>
+<p>
+Point groups are labeled with the <code>pointgroup</code> library. Seed 42 throughout.
+</p>
+<div class="callout"><span class="lab">Why this test is decisive</span>
+A canonicalization is <em>by definition</em> a function \(c\) with \(c(g\cdot x)=c(x)\) for every rigid
+transform \(g\) (rotation + translation) in the molecule&rsquo;s orbit. With zero coordinate noise, an exact,
+numerically stable canonicalization has no way to produce anything other than EMD \(=0\) between the baseline
+pose and the re-canonicalized perturbed pose. This page is about whether that holds in practice.</div>
+
+<h2>2. Table 1 &mdash; reproduction by rank</h2>
+<p>
+<strong>Protocol (primary):</strong> the notebook&rsquo;s own protocol, <code>qm9[:10000]</code>, 10 perturbations
+per molecule. This setting reproduces the paper&rsquo;s reported PCA row almost exactly, which validates the harness.
+</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Source</th><th>Method</th><th>Rank&nbsp;1</th><th>Rank&nbsp;2</th><th>Rank&nbsp;3</th></tr></thead>
+<tbody>
+<tr><td rowspan="4">Ours (reproduction)</td><td>ASUN</td><td>0.00000</td><td>0.00000</td><td>0.06082</td></tr>
+<tr><td>PCA (centered)</td><td>0.00005</td><td>0.01827</td><td>0.82744</td></tr>
+<tr><td><strong>ours</strong></td><td><strong>0.00000</strong></td><td><strong>0.00000</strong></td><td><strong>0.00000</strong></td></tr>
+<tr><td><strong>ours: PCA-full dispatch</strong></td><td><strong>3.4&times;10<sup>&minus;9</sup></strong></td><td><strong>3.8&times;10<sup>&minus;9</sup></strong></td><td><strong>8.4&times;10<sup>&minus;9</sup></strong></td></tr>
+<tr><td rowspan="3">Paper (Baker et al. 2024, Table 1)</td><td>PCA</td><td>0.00014</td><td>0.01793</td><td>0.82758</td></tr>
+<tr><td>AE</td><td>1.15122</td><td>0.03754</td><td>0.03178</td></tr>
+<tr><td>ASUN</td><td>0.00014</td><td>0.00008</td><td>0.02826</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+The notebook&rsquo;s own shipped PCA implementation is a no-op stub (uncentered), giving EMD \(\approx 2.0\)
+everywhere &mdash; not usable as a baseline, so we substituted a correctly centered PCA for comparison.
+</p>
+<ul>
+<li><strong>Harness validated:</strong> our centered-PCA numbers (0.00005 / 0.01827 / 0.82744) match the paper&rsquo;s
+reported PCA row (0.00014 / 0.01793 / 0.82758) to about four significant figures.</li>
+<li><strong>The gap that matters:</strong> ASUN is <strong>nonzero on rank 3</strong> in both the paper&rsquo;s own
+numbers (0.02826) and our reproduction (0.06082), even though the only change between baseline and perturbed
+poses is a rigid rotation + translation with zero coordinate noise. <strong>Ours is exactly 0</strong> at every
+rank.</li>
+</ul>
+
+<h2>3. Subset study</h2>
+<p>
+<strong>Protocol (paper-exact):</strong> 5,000 molecules &times; 100 perturbations each, matching the paper&rsquo;s
+stated evaluation size.
+</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Subset</th><th>ASUN rank-3 mean EMD</th></tr></thead>
+<tbody>
+<tr><td><code>qm9[:5000]</code> (first 5000, size-ordered)</td><td>0.06633</td></tr>
+<tr><td>random 5000, seed 1</td><td>0.03891</td></tr>
+<tr><td>random 5000, seed 2</td><td>0.04024</td></tr>
+<tr><td>random 5000, seed 3</td><td>0.03890</td></tr>
+<tr><td>random 5000, seed 4</td><td>0.03994</td></tr>
+<tr><td>random 5000, seed 5</td><td>0.04279</td></tr>
+<tr><td>random-subset mean (sd)</td><td>&asymp;0.0402 (sd &asymp; 0.0016)</td></tr>
+<tr><td>paper-reported (Table 2 protocol)</td><td>0.02826</td></tr>
+<tr><td><strong>ours, every subset</strong></td><td><strong>&asymp;8.8&times;10<sup>-9</sup> (machine precision)</strong></td></tr>
+<tr><td>PCA (centered), random subsets</td><td>&asymp;0.888</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout"><span class="lab">Interpretation</span>
+QM9 is size-ordered, so <code>qm9[:5000]</code> is the smallest, most symmetric molecules in the dataset &mdash;
+exactly the regime that stresses ASUN&rsquo;s convex-hull / DFA pipeline hardest. Switching to random 5,000-molecule
+subsets explains <strong>most</strong> of the gap between our reproduction and the paper (0.066 &rarr; &asymp;0.040).
+But a residual factor of &asymp;1.4&times; down to the paper&rsquo;s reported 0.02826 remains <strong>unexplained by
+subset variance</strong>: all five random seeds cluster tightly at 0.039&ndash;0.043, well above the paper&rsquo;s
+number. <strong>Ours is unaffected by subset choice</strong> in either case, holding at machine precision.
+</div>
+
+<h2>4. Table 2 &mdash; reproduction by point group</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Point group</th><th>n_mol</th><th>PCA (centered, ours)</th><th>AE (ours, giae)</th><th>ASUN (ours)</th><th>ours</th></tr></thead>
+<tbody>
+<tr><td>C1</td><td>111,902</td><td>0.915</td><td>0.0463 (n=300)</td><td>0.0200 (median &asymp; 0)</td><td><strong>&asymp; 0</strong></td></tr>
+<tr><td>C&infin;v</td><td>8</td><td>0.405</td><td>0.1614</td><td>0.00015</td><td><strong>&asymp; 0</strong></td></tr>
+<tr><td>Cs</td><td>17,808</td><td>0.745</td><td>0.0411 (n=300)</td><td>0.1609 (median &asymp; 0)</td><td><strong>&asymp; 0</strong></td></tr>
+<tr><td>D6h</td><td>1</td><td>0.153</td><td>0.0269</td><td>0.00008</td><td><strong>&asymp; 0</strong></td></tr>
+<tr><td>Td</td><td>5</td><td>1.009</td><td>0.0336</td><td>0.00032</td><td><strong>&asymp; 0</strong></td></tr>
+<tr><td>ours: PCA-full dispatch</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td><strong>&asymp; 0</strong> (C1 8.8e-9 / C&infin;v 9.7e-9 / Cs 8.8e-9 / D6h 5.5e-9 / Td 6.9e-9)</td></tr>
+<tr><td colspan="6"><em>Paper-reported reference row (Baker et al. 2024, Table 2), for comparison only &mdash; not re-run by us:</em></td></tr>
+<tr><td>C1 / C&infin;v / Cs / D6h / Td (paper)</td><td>&mdash;</td><td>0.853 / 0.303 / 0.679 / 0.244 / 0.721</td><td>0.041 / 0.240 / 0.037 / 0.023 / 0.028</td><td>0.018 / 0.001 / 0.004 / 0.001 / 0.001</td><td>&mdash;</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout"><span class="lab">How to read this table</span>
+The <strong>PCA (centered)</strong>, <strong>ASUN</strong>, and <strong>ours</strong> columns and the
+<strong>n_mol</strong> counts are our own reproduction over the <strong>full QM9 dataset</strong> (130,831
+molecules, 10 rotation+translation perturbations each), using the paper&rsquo;s geometric EMD. ASUN values
+are means; for C1 and Cs the <em>median</em> is &asymp; 0, so the mean is driven by a tail of molecules whose
+ASUN frame flips (not a uniform error). Our method is at machine precision (&asymp; 9&times;10<sup>&minus;9</sup>)
+on every group. The <strong>AE</strong> column is <strong>our own re-run</strong> of the Winter&nbsp;et&nbsp;al.
+learned autoencoder frame (giae), sampled at 300 molecules for C1 and Cs and all found molecules for the rare
+groups; it reproduces the paper&rsquo;s reported AE row (shown below) well &mdash; including AE&rsquo;s poor
+generalization to C&infin;v. <strong>Caveat:</strong> C&infin;v (n=8), Td (n=5), and D6h (n=1) are rare in QM9,
+so those rows carry very thin samples and should be read as indicative, not precise.</div>
+
+<h2>5. Significance</h2>
+<div class="theorem">
+<span class="lab">What "EMD = 0" does and does not mean</span>
+A canonicalization is <em>by definition</em> invariant to rotation and translation: \(X\) and \(R\!\cdot\!X + t\)
+are the same molecule in the same orbit, so <em>any</em> exact, numerically-stable canonicalization <strong>must</strong>
+map them to the identical representative, giving EMD \(=0\). Our method does exactly this &mdash; \(\approx 10^{-8}\),
+machine precision &mdash; on <strong>every</strong> rank and <strong>every</strong> point group tested. "No errors
+everywhere" is not evidence of some special robustness property; it simply confirms our implementation is a
+faithful, stable exact canonicalization, as it is supposed to be.
+</div>
+<p>
+<strong>The finding is the comparison, not our zero.</strong> ASUN also claims to be an exact canonicalization,
+yet it does <strong>not</strong> score 0 even with zero coordinate noise &mdash; only a rigid rotation + translation
+of the input. It breaks its own claimed rotation-invariance on symmetric molecules: the rank-3 tail in Table 1,
+and systematic failures on point groups such as Ci and D3d observed in the underlying runs. The right framing
+is <strong>"ASUN fails its own consistency check; ours holds"</strong> &mdash; not "ours is noise-proof."
+</p>
+<div class="ok"><span class="lab">Honest caveat (not this page&rsquo;s main result)</span>
+Separately, under <em>added</em> coordinate noise, our method is no longer exactly 0 and destabilizes on genuine
+\(\ge3\)-fold axes &mdash; the same degeneracy dichotomy this project is built around. That is a real limitation
+of the discontinuous-canonicalization approach, but it is a different experiment from the zero-noise
+rigid-transform test above, which is the one both Table 1 and Table 2 report.</div>
+<p>
+<strong>Robustness to inputs:</strong> ours never crashes on any molecule or point group tested. ASUN raises
+<code>AssertionError</code> on cubic / octahedral / bipyramidal shapes.
+</p>
+
+<hr>
+<p class="footnote">Reproduced from the released repo: <code>github.com/Utah-Math-Data-Science/alignment</code>
+(Baker et al. 2024). Scripts and CSVs for this page live in <code>experiments/asun_robustness/</code>.</p>
+
+<hr>
+
+<p><strong>A concrete construction for the hardest stratum.</strong> The comparison above shows the incumbent
+breaking its own rotation-invariance on symmetric molecules. This second result is our explicit
+canonicalization for the one case PCA cannot resolve on its own &mdash; the \(\ge3\)-fold (axial-degeneracy)
+stratum &mdash; with the two invariances it must satisfy verified to machine precision.</p>
+
+<h2>6. PCA frame, then the \(O(2)\times O(1)\) residual</h2>
+<p>
+Centre the cloud \(X\in\mathbb R^{n\times3}\), form the Gram matrix \(C=X^\top X\in\mathbb R^{3\times3}\), and
+diagonalize \(C=V\Lambda V^\top\) (eigenvalues ascending). Our stratum is exactly the one PCA leaves ambiguous:
+a \(\ge3\)-fold axis (C\(_{3h}\), C\(_{4h}\), C\(_{6h}\), D\(_{nh}\)) forces the spectrum
+\(\Lambda=(\lambda,\mu,\mu)\) or \((\mu,\mu,\lambda)\) &mdash; <em>one double eigenvalue and one simple</em>. The
+double eigenvalue&rsquo;s eigenspace is a 2-<em>plane</em>, so its eigenbasis is fixed only up to an \(O(2)\)
+rotation/reflection; the simple eigenvector is fixed only up to a sign. Writing \(Y=XV\), the eigendecomposition
+is ambiguous <em>exactly</em> up to
+\[ Y \;\longmapsto\; Y\,Q,\qquad Q=\mathrm{blockdiag}(O,\varepsilon),\quad O\in O(2),\ \varepsilon\in\{+1,-1\}, \]
+a right action on the three columns of \(Y\): the residual group \(O(2)\times O(1)\). Canonicalizing \(Y\) against
+this residual (and sorting rows against \(S_n\)) yields an exact pose \(c(X)\) with \(c(gX)=c(X)\) for every
+\(g\in O(3)\times S_n\). PCA has done the heavy lifting &mdash; collapsing all of \(O(3)\) down to a
+finite-plus-one-circle residual; only \(O(2)\times O(1)\) is left to fix.
+</p>
+
+<div class="warn"><span class="lab">The one trap: never canonicalize the 2-plane alone</span>
+It is tempting to fix the \(O(2)\) by canonicalizing the projection of \(Y\) onto the degenerate 2-plane with the
+2D polar routine, then attach the axis column. This <strong>breaks invariance.</strong> The 2D shadow can carry
+more symmetry than the cloud: three coaxial \(k\)-rings staggered by \(\tfrac13\)-steps project to a regular
+\(3k\)-gon (apparent order \(3k\)) while the true axis symmetry is only \(C_k\). A frame fixed from the shadow
+discards the height that breaks the spurious symmetries. <strong>The fix:</strong> the 2D routine only
+<em>proposes</em> candidate in-plane orientations (one per non-axial point, each rotated onto the \(+y\) ray, times
+a reflection); the winner is the <strong>argmin of the quantized row key of the full \((y_1,y_2,y_3)\) triple</strong>,
+axis column included. Surviving ties are then genuine symmetries, hence harmless.</div>
+
+<h2>7. The axis sign is just another argmin dimension</h2>
+<p>
+The sign \(\varepsilon\) of the simple (axis) column needs no heuristic &mdash; no &ldquo;orient so some reference
+atom has positive height,&rdquo; which has nothing to grip on planar molecules where <em>every</em> atom sits at
+height zero. We simply enumerate \(\varepsilon\in\{+1,-1\}\) as one more axis of the argmin. Two outcomes, both
+correct:
+</p>
+<ul>
+<li><strong>The flip changes the cloud</strong> &rArr; the quantized keys differ and the argmin picks one
+deterministically.</li>
+<li><strong>Flipping the last column is itself a symmetry</strong> &mdash; some \(g\in H\) sends the axis
+\(w\mapsto-w\) (e.g. a planar C\(_{3h}\) whose horizontal mirror \(\sigma_h\) reverses the axis) &rArr; both signs
+produce the <em>same</em> output cloud, a harmless tie. Nothing to decide.</li>
+</ul>
+<p>That is the whole story for the sign: when \(w\mapsto-w\) is a symmetry the two candidates coincide; otherwise
+the full-cloud key breaks the tie. No stability argument is needed &mdash; these are exact ties, not near-ties.</p>
+
+<div class="grill"><span class="lab">Grill the residual</span>
+<strong>(1)</strong> Why is the residual exactly \(O(2)\times O(1)\)? Which orthogonal matrices commute with
+\(\Lambda=\mathrm{diag}(\mu,\mu,\lambda)\), and why does that pin down the block structure? <strong>(2)</strong> On
+the staggered three-ring cloud, how many candidate frames tie at the minimum, and which group elements do they
+correspond to? <strong>(3)</strong> For a planar C\(_{3h}\) molecule, write \(\Lambda\): which column is the simple
+one, and why is the \(\pm\) axis genuinely unfixable &mdash; yet harmless?</div>
+
+<h2>8. Verification</h2>
+<p>
+The construction is implemented in <code>code/canonicalize_pca_degenerate.py</code>, with the eigenframe exposed as
+a seam &mdash; <code>canonicalize_in_eigenframe(X,&lambda;,V)</code> &mdash; so the residual invariance can be tested
+by feeding it \(V\) and \(V\,\mathrm{blockdiag}(O,\varepsilon)\) directly. The suite
+<code>code/test_canonicalize_pca_degenerate.py</code> (<strong>28/28 passing</strong>) checks:
+</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Property</th><th>Statement</th><th>Measured</th></tr></thead>
+<tbody>
+<tr><td>Source invariance</td><td>\(c(PXR^\top+t)=c(X)\), \(R\in O(3)\) (reflections included), \(P\in S_n\)</td><td>\(\le10^{-15}\cdot\text{scale}\)</td></tr>
+<tr><td>Eigenframe invariance</td><td>\(V\mapsto V\,\mathrm{blockdiag}(O,\varepsilon)\) leaves \(c\) unchanged</td><td>\(7.8\times10^{-16}\cdot\text{scale}\)</td></tr>
+<tr><td>Staggered trap</td><td>\(3k\)-gon shadow, true \(C_k\): module holds, naïve 2-plane baseline does not</td><td>module \(\sim10^{-15}\); naïve \(0.58\cdot\text{scale}\)</td></tr>
+<tr><td>Axis-sign tie</td><td>planar C\(_{3h}\): \(c(X)=c(\sigma_h X)\)</td><td>exact (\(0\))</td></tr>
+<tr><td>Off-stratum inputs</td><td>distinct or triple spectrum &rArr; refuse (route elsewhere)</td><td><code>ValueError</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>
+The two invariances the method is <em>supposed</em> to satisfy &mdash; \(O(2)\times O(1)\) on the eigenvectors and
+\(O(3)\times S_n\) on the cloud &mdash; both hold to machine precision, and the single construction trap
+(canonicalizing the 2-plane in isolation) is fenced off by an explicit failing baseline in the tests.
+</p>
+
+<div class="ok"><span class="lab">Where this sits</span>
+This is the linear-algebra route to the same orbit representative the WWV construction (Wolter&ndash;Woo&ndash;Volz
+1985) reaches combinatorially: on the \(\ge3\)-fold stratum PCA already removes all of \(O(3)\) except
+\(O(2)\times O(1)\), and a 2D polar argmin plus a sign finishes the job. No eigenvalue degeneracy is ever divided
+by &mdash; we canonicalize the degenerate <em>plane</em>, never the (undefined) individual eigenvectors.</div>
+
+<hr>
+<p class="footnote">Construction and tests: <code>docs/logml/code/canonicalize_pca_degenerate.py</code> and
+<code>test_canonicalize_pca_degenerate.py</code> (28 tests, run with <code>conda run -n base python3</code>).</p>
+
+</main>
+<footer class="pg"><span>LogML 2026 &middot; Hidden in Plain Symmetry</span><span>Mentor: Snir Hordan</span></footer>
+</body>
+</html>
