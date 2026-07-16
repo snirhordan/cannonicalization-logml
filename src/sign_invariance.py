@@ -216,7 +216,7 @@ def _lex_less(a: np.ndarray, b: np.ndarray, tol: float) -> bool:
     return significant.size > 0 and diff[significant[0]] < 0
 
 
-def canonical_radial(X: np.ndarray, tol: float = 1e-9):
+def canonical_radial(X: np.ndarray, labels: np.ndarray = None, tol: float = 1e-9):
     """
     Canonicalizes X, a matrix representing a (centered) 3d point cloud, to an
     invariant form under rotation, reflection and permutation.
@@ -249,6 +249,16 @@ def canonical_radial(X: np.ndarray, tol: float = 1e-9):
     X : array-like, shape (n_samples, 3)
         The input point cloud. Assumed centered (radii are measured from the
         origin), matching canonical_polar.
+    labels : array-like, shape (n_samples,), optional
+        Per-point labels (e.g. atom types), any dtype orderable by np.unique.
+        The labels are mapped to integer ranks -- an arbitrary but consistent
+        ordering -- and used to break ties everywhere geometry alone cannot:
+        among tied poles, in the row ordering, and in the comparison between
+        candidate frames. This breaks geometric symmetries that the labeling
+        does not share (e.g. a mirror plane exchanging differently-labeled
+        points), while remaining invariant to rotation, reflection and
+        permutation of the labeled cloud. Default is None (unlabeled; ties
+        are left to the geometric enumeration as before).
     tol : float, optional
         Absolute tolerance for tie comparisons. Default is 1e-9. As with
         canonical_polar the cloud should live on a scale well away from tol.
@@ -257,6 +267,9 @@ def canonical_radial(X: np.ndarray, tol: float = 1e-9):
     -------
     Y : array-like, shape (n_samples, 3)
         The canonicalized point cloud.
+    reordered_labels : array-like, shape (n_samples,)
+        ``labels`` reordered to match ``Y``. Only returned if ``labels`` is
+        not None -- with no labels, the return value is just ``Y`` as before.
 
     Notes
     -----
@@ -270,18 +283,37 @@ def canonical_radial(X: np.ndarray, tol: float = 1e-9):
     X = np.asarray(X, dtype=float)
     if X.ndim != 2 or X.shape[1] != 3:
         raise ValueError(f"expected a point cloud of shape (n, 3), got {X.shape}")
+
+    # np.unique sorts the distinct labels, so the ranks are consistent across
+    # permutations of the points. Unlabeled -> all-zero ranks, so every label
+    # tiebreak below is a no-op.
+    if labels is None:
+        lab = np.zeros(X.shape[0], dtype=np.int64)
+    else:
+        labels = np.asarray(labels)
+        if labels.shape != (X.shape[0],):
+            raise ValueError(
+                f"expected labels of shape ({X.shape[0]},), got {labels.shape}"
+            )
+        _, lab = np.unique(labels, return_inverse=True)
+
     if X.shape[0] == 0:
-        return X.copy()
+        return (X, labels) if labels is not None else X
 
     r = np.linalg.norm(X, axis=1)
     rmax = r.max()
     if rmax <= tol:
         # The whole cloud sits at the origin: already O(3) invariant.
-        return X[np.lexsort(X.T[::-1])].copy()
+        order = np.lexsort((lab, X[:, 2], X[:, 1], X[:, 0]))
+        return (X[order], labels[order]) if labels is not None else X[order]
 
     poles = np.flatnonzero(r >= rmax - tol)
+    # A pole's label is invariant, so only minimum-rank poles can be canonical:
+    # this breaks symmetry between differently-labeled poles and prunes the loop.
+    poles = poles[lab[poles] == lab[poles].min()]
 
-    best_rows = None
+    best_cloud = None
+    best_order = None
     best_key = None
     for p in poles:
         R = _axis_frame(X[p] / r[p])
@@ -319,9 +351,13 @@ def canonical_radial(X: np.ndarray, tol: float = 1e-9):
                 # still returning the real coordinates. Full 3d, so z breaks
                 # ties the xy projection cannot see.
                 quant = np.round(cloud / tol)
-                order = np.lexsort((quant[:, 2], quant[:, 1], quant[:, 0]))
-                key = quant[order].ravel()
+                # lab is the last row-order tiebreak, and is appended to the key
+                # so frames with identical sorted geometry are decided by their
+                # label sequences (ranks differ by >= 1, above the 0.5 tolerance).
+                order = np.lexsort((lab, quant[:, 2], quant[:, 1], quant[:, 0]))
+                key = np.column_stack([quant, lab])[order].ravel()
                 if best_key is None or _lex_less(key, best_key, 0.5):
-                    best_rows, best_key = cloud[order], key
+                    best_cloud, best_order, best_key = cloud, order, key
 
-    return best_rows
+    Y = best_cloud[best_order]
+    return (Y, labels[best_order]) if labels is not None else Y
