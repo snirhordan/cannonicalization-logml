@@ -46,8 +46,8 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 from scipy.spatial.distance import pdist
 from scipy.stats import ortho_group
 
-from src.sign_invariance import canonical_radial
 from src.shapes import build_cases
+from experiments.methods import METHODS
 
 K_FLIP = 5.0          # aligned/shape ratio above which a pair counts as a flip
 FLOOR = 1e-6          # absolute floor (normalised) so tiny-noise pairs never flip
@@ -106,25 +106,25 @@ def pairwise_stats(Ys, scale):
 # --------------------------------------------------------------------------- #
 # The three conditions
 # --------------------------------------------------------------------------- #
-def run_conditions(X, sigma, reps, rng):
+def run_conditions(X, sigma, reps, rng, canon):
     n = len(X)
     scale = rms_radius(X)
     noise = lambda: sigma * scale * rng.normal(size=X.shape)
 
     # C2: one fixed noisy cloud, many views.
     N = X + noise()
-    c2 = [canonical_radial(apply_view(N, *random_view(rng, n))) for _ in range(reps)]
+    c2 = [canon(apply_view(N, *random_view(rng, n))) for _ in range(reps)]
 
     # C3: one fixed view, many independent noise draws.
     Q0, perm0 = random_view(rng, n)
     base = apply_view(X, Q0, perm0)
-    c3 = [canonical_radial(base + noise()) for _ in range(reps)]
+    c3 = [canon(base + noise()) for _ in range(reps)]
 
     # C4: independent view AND noise per observation.
     c4 = []
     for _ in range(reps):
         Q, perm = random_view(rng, n)
-        c4.append(canonical_radial(apply_view(X, Q, perm) + noise()))
+        c4.append(canon(apply_view(X, Q, perm) + noise()))
 
     return {
         "invariance_max": max(aligned_discrepancy(c2[0], y, scale) for y in c2[1:]),
@@ -133,11 +133,11 @@ def run_conditions(X, sigma, reps, rng):
     }
 
 
-def sweep(cases, sigmas, reps, seed):
+def sweep(cases, sigmas, reps, seed, canon):
     rng = np.random.default_rng(seed)
     results = {}
     for name, X in cases.items():
-        rows = [run_conditions(X, s, reps, rng) for s in sigmas]
+        rows = [run_conditions(X, s, reps, rng, canon) for s in sigmas]
         results[name] = rows
         print(
             f"{name:15s} n={len(X):2d}  "
@@ -171,6 +171,72 @@ def plot_discrepancy_grid(results, sigmas, path):
     axes[0, 0].legend(fontsize=8, loc="upper left")
     fig.supxlabel("noise sigma (fraction of cloud scale)")
     fig.supylabel("normalised discrepancy   (aligned >> shape  =>  frame flip)")
+    fig.tight_layout()
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+def plot_response_grid(results, sigmas, path):
+    """Per cloud: shape discrepancy / sigma vs noise -- the geometric response
+    per unit of input noise. Shape is orientation/permutation invariant, so this
+    curve is free of the frame-flip artifact; a flat line means the canonical
+    geometry responds linearly to perturbation, and where it bends is where that
+    linear response breaks down for that shape."""
+    names = list(results)
+    ratios = {n: np.array([r["C4"]["shape"] for r in results[n]]) / sigmas for n in names}
+    ymax = max(float(np.nanmax(v)) for v in ratios.values())
+
+    ncol = 4
+    nrow = int(np.ceil(len(names) / ncol))
+    fig, axes = plt.subplots(nrow, ncol, figsize=(4 * ncol, 3 * nrow), squeeze=False)
+    for ax, name in zip(axes.ravel(), names):
+        ax.semilogx(sigmas, ratios[name], "-o", color=SHAPE_COLOR, ms=4)
+        ax.set_title(name, fontsize=10)
+        ax.set_ylim(0, ymax * 1.05)  # shared scale so shapes are comparable
+        ax.grid(True, which="both", alpha=0.15)
+    for ax in axes.ravel()[len(names):]:
+        ax.set_visible(False)
+    fig.supxlabel("noise sigma (fraction of cloud scale)")
+    fig.supylabel("shape discrepancy / sigma   (geometric response per unit noise)")
+    fig.tight_layout()
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+METHOD_STYLE = {
+    "radial": ("#3b6fd6", "o"),
+    "radial_polar": ("#2ca25f", "D"),
+    "asun": ("#e08214", "s"),
+    "pca": ("#8452cc", "^"),
+}
+
+
+def plot_combined_response(results_by_method, sigmas, path):
+    """One subplot per shape, a curve per method: aligned discrepancy / sigma
+    (the canonicalization's own response per unit noise). The shape / sigma
+    floor is method-independent (pdist is invariant to the frame), so it is
+    drawn once in grey: a method that sits on the floor tracks the geometry
+    (stable); a method that lifts off toward small sigma is flipping."""
+    names = list(next(iter(results_by_method.values())))
+    eps = 1e-16
+    ncol = 4
+    nrow = int(np.ceil(len(names) / ncol))
+    fig, axes = plt.subplots(nrow, ncol, figsize=(4 * ncol, 3 * nrow), squeeze=False)
+    for ax, shape in zip(axes.ravel(), names):
+        any_res = next(iter(results_by_method.values()))
+        floor = np.maximum([r["C4"]["shape"] for r in any_res[shape]], eps) / sigmas
+        ax.loglog(sigmas, floor, "--", color="0.6", lw=1.2, label="shape/σ (all)")
+        for m, res in results_by_method.items():
+            y = np.maximum([r["C4"]["aligned"] for r in res[shape]], eps) / sigmas
+            color, marker = METHOD_STYLE.get(m, ("k", "o"))
+            ax.loglog(sigmas, y, "-", marker=marker, color=color, ms=4, label=m)
+        ax.set_title(shape, fontsize=10)
+        ax.grid(True, which="both", alpha=0.15)
+    for ax in axes.ravel()[len(names):]:
+        ax.set_visible(False)
+    axes[0, 0].legend(fontsize=8, loc="upper right")
+    fig.supxlabel("noise sigma (fraction of cloud scale)")
+    fig.supylabel("aligned discrepancy / sigma   (on the grey floor = stable; rising = flips)")
     fig.tight_layout()
     fig.savefig(path, dpi=130)
     plt.close(fig)
@@ -221,7 +287,7 @@ def write_summary(results, sigmas, path):
             )
 
 
-def ghost_overlay(name, X, sigma, reps, seed):
+def ghost_overlay(name, X, sigma, reps, seed, canon):
     """Overlay many C4 canonical outputs on one axis; flips show as ghosting."""
     rng = np.random.default_rng(seed)
     n = len(X)
@@ -230,7 +296,7 @@ def ghost_overlay(name, X, sigma, reps, seed):
     for _ in range(reps):
         Q, perm = random_view(rng, n)
         eps = sigma * scale * rng.normal(size=X.shape)
-        outs.append(canonical_radial(apply_view(X, Q, perm) + eps))
+        outs.append(canon(apply_view(X, Q, perm) + eps))
     limit = 1.15 * max(np.linalg.norm(Y, axis=1).max() for Y in outs)
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection="3d")
@@ -256,31 +322,55 @@ def main():
     parser.add_argument("--smin", type=float, default=1e-8)
     parser.add_argument("--smax", type=float, default=1e-1)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--outdir", default="viz_output/robustness")
+    parser.add_argument("--method", default="radial", choices=list(METHODS))
+    parser.add_argument(
+        "--combined", action="store_true",
+        help="sweep every method and write one combined response grid",
+    )
+    parser.add_argument("--outdir", default=None, help="default: viz_output/robustness/<method>")
     parser.add_argument("--ghost", help="cloud name for a ghosting overlay")
     parser.add_argument("--ghost-sigma", type=float, default=1e-3)
     args = parser.parse_args()
 
+    canon = METHODS[args.method]
+    outdir = args.outdir or os.path.join("viz_output", "robustness", args.method)
     cases = build_cases()
     sigmas = np.logspace(np.log10(args.smin), np.log10(args.smax), args.nsigma)
+
+    if args.combined:
+        combo_dir = args.outdir or os.path.join("viz_output", "robustness")
+        os.makedirs(combo_dir, exist_ok=True)
+        results_by_method = {}
+        for m in METHODS:
+            print(f"method: {m}")
+            results_by_method[m] = sweep(cases, sigmas, args.reps, args.seed, METHODS[m])
+        path = os.path.join(combo_dir, "combined_response_grid.png")
+        plot_combined_response(results_by_method, sigmas, path)
+        print(f"\nwrote {path}")
+        return
 
     if args.ghost:
         if args.ghost not in cases:
             raise SystemExit(f"unknown cloud {args.ghost!r}; choices: {list(cases)}")
-        ghost_overlay(args.ghost, cases[args.ghost], args.ghost_sigma, args.reps, args.seed)
+        ghost_overlay(
+            args.ghost, cases[args.ghost], args.ghost_sigma, args.reps, args.seed, canon
+        )
         plt.show()
         return
 
-    os.makedirs(args.outdir, exist_ok=True)
-    results = sweep(cases, sigmas, args.reps, args.seed)
+    os.makedirs(outdir, exist_ok=True)
+    print(f"method: {args.method}")
+    results = sweep(cases, sigmas, args.reps, args.seed, canon)
 
-    grid = os.path.join(args.outdir, "discrepancy_grid.png")
-    heat = os.path.join(args.outdir, "flip_heatmap.png")
-    summary = os.path.join(args.outdir, "summary.csv")
+    grid = os.path.join(outdir, "discrepancy_grid.png")
+    response = os.path.join(outdir, "response_grid.png")
+    heat = os.path.join(outdir, "flip_heatmap.png")
+    summary = os.path.join(outdir, "summary.csv")
     plot_discrepancy_grid(results, sigmas, grid)
+    plot_response_grid(results, sigmas, response)
     plot_flip_heatmap(results, sigmas, heat)
     write_summary(results, sigmas, summary)
-    print(f"\nwrote {grid}\nwrote {heat}\nwrote {summary}")
+    print(f"\nwrote {grid}\nwrote {response}\nwrote {heat}\nwrote {summary}")
 
 
 if __name__ == "__main__":
