@@ -3,6 +3,16 @@ import pytest
 from scipy.stats import ortho_group
 
 from src.sign_invariance import canonical_radial
+from src.shapes import (
+    cube,
+    cuboctahedron,
+    dodecahedron,
+    icosahedron,
+    octahedron,
+    replicate,
+    rotate_z,
+    tetrahedron,
+)
 
 
 def random_orthogonal(rng):
@@ -81,17 +91,7 @@ def test_radial_platonic_solids(seed=3):
     # Maximum stress for the pole/projection symmetry handling: all vertices
     # tie in radius and every axis-aligned projection is highly symmetric, so
     # only the full-3d tie-break keeps the form well defined.
-    tetrahedron = np.array(
-        [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]], dtype=float
-    )
-    octahedron = np.array(
-        [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]],
-        dtype=float,
-    )
-    signs = np.array([[a, b, c] for a in (-1, 1) for b in (-1, 1) for c in (-1, 1)])
-    cube = signs.astype(float)
-
-    for solid in (tetrahedron, octahedron, cube):
+    for solid in (tetrahedron(), octahedron(), cube()):
         assert_invariant(solid, rng, n_transforms=20)
 
 
@@ -167,14 +167,7 @@ def test_radial_icosahedron(seed=16):
     # 12 vertices, all tied at the maximum radius: 12 pole candidates, each
     # with a symmetric projection, so the full-3d tie-break must agree across
     # every one of them.
-    phi = (1 + 5**0.5) / 2
-    verts = []
-    for s1 in (-1.0, 1.0):
-        for s2 in (-1.0, 1.0):
-            verts.append([0.0, s1, s2 * phi])
-            verts.append([s1, s2 * phi, 0.0])
-            verts.append([s1 * phi, 0.0, s2])
-    ico = np.array(verts)
+    ico = icosahedron()
     assert ico.shape == (12, 3)
     assert_invariant(ico, rng, n_transforms=20)
 
@@ -185,14 +178,96 @@ def test_radial_subtol_max_radius_ties(seed=17):
     # Radii jittered below tol must all still count as poles: a cloud that is
     # symmetric up to sub-tol radial noise must behave as exactly tied (any
     # pole gives the same canonical form up to that noise).
-    octahedron = np.array(
-        [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]],
-        dtype=float,
-    )
     for _ in range(20):
         jitter = 1e-12 * rng.normal(size=(6, 1))
-        X = octahedron * (1.0 + jitter)
+        X = octahedron() * (1.0 + jitter)
         assert_invariant(X, rng, n_transforms=15)
+
+
+def test_radial_dodecahedron(seed=18):
+    rng = np.random.default_rng(seed)
+
+    # The other icosahedral-symmetry solid: 20 vertices (a cube plus three
+    # golden rectangles), all tied at radius sqrt(3), but with 3-fold vertex
+    # figures instead of the icosahedron's 5-fold. Many poles, deep symmetry.
+    dodeca = dodecahedron()
+    assert dodeca.shape == (20, 3)
+    assert_invariant(dodeca, rng, n_transforms=15)
+
+
+def test_radial_cuboctahedron(seed=19):
+    rng = np.random.default_rng(seed)
+
+    # A vertex-transitive Archimedean solid (O_h): 12 vertices, all permutations
+    # of (+-1, +-1, 0). Its vertices lie in three perpendicular squares, so many
+    # axis-aligned projections are degenerate -- a strong test of the z-tiebreak.
+    cuboct = cuboctahedron()
+    assert cuboct.shape == (12, 3)
+    assert_invariant(cuboct, rng, n_transforms=15)
+
+
+def test_radial_chiral_rotational_symmetry(seed=20):
+    rng = np.random.default_rng(seed)
+
+    # Purely rotational (chiral) symmetry C_k about an axis: a random motif
+    # replicated by k rotations has no mirror plane, so the two reflection
+    # branches genuinely differ and step 8 must pick one consistently -- the 3D
+    # analogue of the 2D pinwheel test.
+    for k in (2, 3, 5):
+        for _ in range(5):
+            motif = rng.normal(size=(2, 3))
+            X = replicate(motif, [rotate_z(2 * np.pi * j / k) for j in range(k)])
+            assert_invariant(X, rng, n_transforms=15)
+
+
+def test_radial_improper_rotation_S4(seed=21):
+    rng = np.random.default_rng(seed)
+
+    # S_4 symmetry: rotate 90 degrees about z then reflect through the xy plane.
+    # Invariant under this improper rotation but not under the pure rotation or
+    # a plain mirror, so it stresses the reflection handling differently from
+    # any proper-rotation case.
+    S4 = np.array([[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, -1.0]])
+    powers = [np.linalg.matrix_power(S4, j) for j in range(4)]
+    for _ in range(10):
+        motif = rng.normal(size=(1, 3))
+        X = replicate(motif, powers)
+        assert_invariant(X, rng, n_transforms=15)
+
+
+def test_radial_inversion_symmetry(seed=22):
+    rng = np.random.default_rng(seed)
+
+    # Inversion centre (C_i): every point is paired with its negative. Very
+    # common in practice and a distinct symmetry element (improper, order 2).
+    for _ in range(20):
+        half = rng.normal(size=(int(rng.integers(2, 8)), 3))
+        X = np.vstack([half, -half])
+        assert_invariant(X, rng, n_transforms=15)
+
+
+def test_radial_bipyramid_axis_poles(seed=23):
+    rng = np.random.default_rng(seed)
+
+    # Dihedral D_kh bipyramids: a regular k-gon ring plus two apexes on the
+    # axis. The apexes are the farthest points, so here the poles lie ON the
+    # symmetry axis (they project to the origin) while the symmetric ring is
+    # what gets canonicalized -- the opposite regime from the Platonic tests.
+    for k in (3, 4, 6):
+        ang = 2 * np.pi * np.arange(k) / k
+        ring = np.column_stack([np.cos(ang), np.sin(ang), np.zeros(k)])
+        bipyramid = np.vstack([ring, [[0.0, 0.0, 1.5], [0.0, 0.0, -1.5]]])
+        assert_invariant(bipyramid, rng, n_transforms=15)
+
+
+def test_radial_dual_compound_two_shells(seed=24):
+    rng = np.random.default_rng(seed)
+
+    # Cube-plus-octahedron dual compound (O_h) with the two solids on distinct
+    # radial shells. Only the outer shell (the octahedron here) supplies poles,
+    # so the pole set is a symmetric strict subset of the cloud.
+    compound = np.vstack([cube(), 2.0 * octahedron()])
+    assert_invariant(compound, rng, n_transforms=15)
 
 
 def test_radial_points_on_the_axis(seed=5):
@@ -234,12 +309,8 @@ def test_radial_duplicates_and_near_symmetric(seed=7):
 
     # Sub-tol perturbation of a symmetric cloud behaves as exactly symmetric;
     # a clearly-resolved perturbation is handled deterministically.
-    base = np.array(
-        [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]],
-        dtype=float,
-    )
     for delta in (1e-12, 1e-4):
-        X = base.copy()
+        X = octahedron()
         X[0, 0] += delta
         assert_invariant(X, rng, n_transforms=15)
 
@@ -295,6 +366,13 @@ if __name__ == "__main__":
     test_radial_partial_max_radius_ties()
     test_radial_icosahedron()
     test_radial_subtol_max_radius_ties()
+    test_radial_dodecahedron()
+    test_radial_cuboctahedron()
+    test_radial_chiral_rotational_symmetry()
+    test_radial_improper_rotation_S4()
+    test_radial_inversion_symmetry()
+    test_radial_bipyramid_axis_poles()
+    test_radial_dual_compound_two_shells()
     test_radial_points_on_the_axis()
     test_radial_collinear_cloud()
     test_radial_duplicates_and_near_symmetric()
