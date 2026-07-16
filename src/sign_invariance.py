@@ -216,7 +216,7 @@ def _lex_less(a: np.ndarray, b: np.ndarray, tol: float) -> bool:
     return significant.size > 0 and diff[significant[0]] < 0
 
 
-def canonical_radial(X: np.ndarray, tol: float = 1e-9):
+def canonical_radial(X: np.ndarray, labels: np.ndarray = None, tol: float = 1e-9):
     """
     Canonicalizes X, a matrix representing a (centered) 3d point cloud, to an
     invariant form under rotation, reflection and permutation.
@@ -249,6 +249,16 @@ def canonical_radial(X: np.ndarray, tol: float = 1e-9):
     X : array-like, shape (n_samples, 3)
         The input point cloud. Assumed centered (radii are measured from the
         origin), matching canonical_polar.
+    labels : array-like, shape (n_samples,), optional
+        Per-point labels (e.g. atom types), any dtype orderable by np.unique.
+        The labels are mapped to integer ranks -- an arbitrary but consistent
+        ordering -- and used to break ties everywhere geometry alone cannot:
+        among tied poles, in the row ordering, and in the comparison between
+        candidate frames. This breaks geometric symmetries that the labeling
+        does not share (e.g. a mirror plane exchanging differently-labeled
+        points), while remaining invariant to rotation, reflection and
+        permutation of the labeled cloud. Default is None (unlabeled; ties
+        are left to the geometric enumeration as before).
     tol : float, optional
         Absolute tolerance for tie comparisons. Default is 1e-9. As with
         canonical_polar the cloud should live on a scale well away from tol.
@@ -257,6 +267,9 @@ def canonical_radial(X: np.ndarray, tol: float = 1e-9):
     -------
     Y : array-like, shape (n_samples, 3)
         The canonicalized point cloud.
+    reordered_labels : array-like, shape (n_samples,)
+        ``labels`` reordered to match ``Y``. Only returned if ``labels`` is
+        not None -- with no labels, the return value is just ``Y`` as before.
 
     Notes
     -----
@@ -270,18 +283,37 @@ def canonical_radial(X: np.ndarray, tol: float = 1e-9):
     X = np.asarray(X, dtype=float)
     if X.ndim != 2 or X.shape[1] != 3:
         raise ValueError(f"expected a point cloud of shape (n, 3), got {X.shape}")
+
+    # np.unique sorts the distinct labels, so the ranks are consistent across
+    # permutations of the points. Unlabeled -> all-zero ranks, so every label
+    # tiebreak below is a no-op.
+    if labels is None:
+        lab = np.zeros(X.shape[0], dtype=np.int64)
+    else:
+        labels = np.asarray(labels)
+        if labels.shape != (X.shape[0],):
+            raise ValueError(
+                f"expected labels of shape ({X.shape[0]},), got {labels.shape}"
+            )
+        _, lab = np.unique(labels, return_inverse=True)
+
     if X.shape[0] == 0:
-        return X.copy()
+        return (X, labels) if labels is not None else X
 
     r = np.linalg.norm(X, axis=1)
     rmax = r.max()
     if rmax <= tol:
         # The whole cloud sits at the origin: already O(3) invariant.
-        return X[np.lexsort(X.T[::-1])].copy()
+        order = np.lexsort((lab, X[:, 2], X[:, 1], X[:, 0]))
+        return (X[order], labels[order]) if labels is not None else X[order]
 
     poles = np.flatnonzero(r >= rmax - tol)
+    # A pole's label is invariant, so only minimum-rank poles can be canonical:
+    # this breaks symmetry between differently-labeled poles and prunes the loop.
+    poles = poles[lab[poles] == lab[poles].min()]
 
-    best_rows = None
+    best_cloud = None
+    best_order = None
     best_key = None
     for p in poles:
         R = _axis_frame(X[p] / r[p])
@@ -319,107 +351,13 @@ def canonical_radial(X: np.ndarray, tol: float = 1e-9):
                 # still returning the real coordinates. Full 3d, so z breaks
                 # ties the xy projection cannot see.
                 quant = np.round(cloud / tol)
-                order = np.lexsort((quant[:, 2], quant[:, 1], quant[:, 0]))
-                key = quant[order].ravel()
+                # lab is the last row-order tiebreak, and is appended to the key
+                # so frames with identical sorted geometry are decided by their
+                # label sequences (ranks differ by >= 1, above the 0.5 tolerance).
+                order = np.lexsort((lab, quant[:, 2], quant[:, 1], quant[:, 0]))
+                key = np.column_stack([quant, lab])[order].ravel()
                 if best_key is None or _lex_less(key, best_key, 0.5):
-                    best_rows, best_key = cloud[order], key
+                    best_cloud, best_order, best_key = cloud, order, key
 
-    return best_rows
-
-
-def _order_axial(P2: np.ndarray, z: np.ndarray, tol: float):
-    """z-augmented reuse of _canonical_orientation's reference selection for one
-    orientation of a projected cloud. P2 is the (n, 2) in-plane projection and z
-    the (n,) height along the pole. Reuses the exact polar machinery -- angle
-    sort with wrap-aware grouping of same-direction points, and the min-radius /
-    min-relative-angle / tie-breaking-walk pruning -- with z threaded in as a
-    further tiebreak. Returns a list of candidate (n, 3) clouds, one per
-    *surviving* reference (each rotated so that reference lands on +y); the
-    caller reduces them by a quantized-Cartesian minimum. Returning every
-    survivor (rather than an angular-order-dependent first one) is what keeps
-    the result invariant when several references tie but are not congruent.
-    """
-    r = np.hypot(P2[:, 0], P2[:, 1])
-    off = np.flatnonzero(r > tol)
-    cloud = np.column_stack([P2, z])
-
-    if off.size == 0:  # axially symmetric: in-plane rotation is immaterial
-        return [cloud]
-
-    # canonical_polar's reference rule, restricted to the off-axis points:
-    # minimum in-plane radius (step 4), then minimum relative angle to the next
-    # point (step 5), then minimum z (the new 3d tiebreak). The relative angle
-    # is each point's gap to its counter-clockwise neighbour, computed in the
-    # angle-sorted order and scattered back so it stays aligned with the point.
-    ang = np.mod(np.arctan2(P2[off, 1], P2[off, 0]), 2 * np.pi)
-    asc = np.argsort(ang, kind="stable")
-    gap = np.diff(ang[asc], append=ang[asc][0] + 2 * np.pi)
-    rel = np.empty(off.size)
-    rel[asc] = np.where(gap > tol, gap, 0.0)  # snap same-direction gaps to 0
-    r_off, z_off = r[off], z[off]
-
-    cand = np.flatnonzero(r_off <= r_off.min() + tol)
-    if cand.size > 1:
-        cand = cand[rel[cand] <= rel[cand].min() + tol]
-    if cand.size > 1:
-        cand = cand[z_off[cand] <= z_off[cand].min() + tol]
-
-    # Step 7: one candidate per surviving reference, rotating it onto +y. Any
-    # residual ties (a genuine symmetry) are congruent, so the caller's
-    # quantized-Cartesian minimum resolves them consistently.
-    out = []
-    for i in cand:
-        theta = np.pi / 2 - ang[i]
-        c, s = np.cos(theta), np.sin(theta)
-        cand_cloud = cloud.copy()
-        cand_cloud[:, :2] = P2 @ np.array([[c, -s], [s, c]]).T
-        out.append(cand_cloud)
-    return out
-
-
-def canonical_radial_polar(X: np.ndarray, tol: float = 1e-9):
-    """
-    Variant of canonical_radial whose in-plane step genuinely reuses the 2d
-    canonical_polar algorithm.
-
-    Like canonical_radial it chooses the pole from the farthest point(s) and
-    aligns it to +z. But instead of enumerating every off-axis point as a
-    reference and taking a quantized-Cartesian minimum, each pole/reflection
-    candidate is canonicalized by _order_axial -- the z-augmented reuse of
-    _canonical_orientation -- so the reference is picked by the polar geometric
-    rule (min radius, min relative angle, tie-break walk), same-direction points
-    are grouped exactly as in the 2d code, and rows come out in cyclic angular
-    order. The finite candidate set (tied poles x both reflections) is then
-    reduced by a tol-quantized lexicographic minimum, as in canonical_radial.
-
-    Parameters and guarantees mirror canonical_radial.
-    """
-    X = np.asarray(X, dtype=float)
-    if X.ndim != 2 or X.shape[1] != 3:
-        raise ValueError(f"expected a point cloud of shape (n, 3), got {X.shape}")
-    if X.shape[0] == 0:
-        return X.copy()
-
-    r = np.linalg.norm(X, axis=1)
-    rmax = r.max()
-    if rmax <= tol:
-        return X[np.lexsort(X.T[::-1])].copy()
-
-    poles = np.flatnonzero(r >= rmax - tol)
-    best_rows = None
-    best_key = None
-    for p in poles:
-        R = _axis_frame(X[p] / r[p])
-        Xa = X @ R.T
-        P2 = Xa[:, :2]
-        z = Xa[:, 2]
-        for sign in (1.0, -1.0):
-            for cloud in _order_axial(P2 * np.array([1.0, sign]), z, tol):
-                # Reduce the pruned candidate set exactly as canonical_radial
-                # does: quantize, row-lexsort in full 3d, take the min.
-                quant = np.round(cloud / tol)
-                order = np.lexsort((quant[:, 2], quant[:, 1], quant[:, 0]))
-                key = quant[order].ravel()
-                if best_key is None or _lex_less(key, best_key, 0.5):
-                    best_rows, best_key = cloud[order], key
-    return best_rows
+    Y = best_cloud[best_order]
+    return (Y, labels[best_order]) if labels is not None else Y
